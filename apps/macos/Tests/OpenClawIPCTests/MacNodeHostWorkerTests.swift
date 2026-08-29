@@ -385,7 +385,6 @@ struct MacNodeHostWorkerTests {
         let worker = MacNodeHostWorker(session: GatewayNodeSession())
         let script = """
         test "$OPENCLAW_NODE_EXEC_HOST" = app || exit 42
-        test "$OPENCLAW_NODE_EXEC_FALLBACK" = 0 || exit 43
         printf '%s\\n' '{"type":"ready","version":"test","manifest":{"caps":["system"],"commands":["system.run"],"pathEnv":"/usr/bin:/bin"},"inventory":{"skills":null,"pluginTools":[]}}'
         # Progress belongs to the invoke; ready already lets the app send that invoke.
         while IFS= read -r line; do
@@ -410,6 +409,38 @@ struct MacNodeHostWorkerTests {
             paramsJSON: #"{"command":["/usr/bin/true"]}"#))
         #expect(response.ok)
         #expect(response.payload != nil)
+        await worker.stop()
+    }
+
+    @Test(arguments: ["SYSTEM_RUN_NOT_STARTED", "SYSTEM_RUN_DENIED", "UNAVAILABLE"])
+    func `worker preserves execution certainty from its node result`(code: String) async throws {
+        let worker = MacNodeHostWorker(session: GatewayNodeSession(), startupTimeout: 5)
+        let script = """
+        printf '%s\\n' '{"type":"ready","version":"test","manifest":{"caps":["system"],"commands":["system.run"],"pathEnv":"/usr/bin:/bin"}}'
+        IFS= read -r invoke
+        printf '{"type":"invoke-result","generation":0,"result":{"id":"worker-outcome","ok":false,"error":{"code":"%s","message":"native outcome"}}}\\n' "$1"
+        while IFS= read -r line; do :; done
+        """
+        do {
+            _ = try await worker.start(launch: MacNodeHostWorkerLaunch(
+                command: ["/bin/sh", "-c", script, "worker", code]))
+            let response = try await AsyncTimeout.withTimeout(
+                seconds: 5,
+                onTimeout: { WorkerBackpressureTimeout() },
+                operation: {
+                    await worker.invoke(BridgeInvokeRequest(id: "worker-outcome", command: "system.run"))
+                })
+            #expect(!response.ok)
+            #expect(response.error?.code.rawValue == code)
+            #expect(response.error?.message == "native outcome")
+            let forwarded = try JSONDecoder().decode(
+                BridgeInvokeResponse.self,
+                from: JSONEncoder().encode(response))
+            #expect(forwarded.error?.code.rawValue == code)
+        } catch {
+            await worker.stop()
+            throw error
+        }
         await worker.stop()
     }
 

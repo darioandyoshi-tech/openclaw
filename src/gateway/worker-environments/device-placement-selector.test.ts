@@ -243,6 +243,22 @@ describe("paired-device automatic placement selection", () => {
     expect(result).toEqual({ ok: false, error: expect.stringContaining(message) });
   });
 
+  it("explains missing device plugin commands even when Gateway policy already allows them", async () => {
+    const environment = nodeEnvironment("runner", 1);
+    const result = await selectNodes([environment], {
+      requirement: REMOTE_REQUIREMENT,
+      availability: async () => ({
+        available: true,
+        node: { ...nodeProof(environment), commands: [] },
+      }),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: expect.stringMatching(/plugin.*device.*gateway\.nodes\.commands\.allow/i),
+    });
+  });
+
   it("rejects runtimes that do not declare paired-device placement support", async () => {
     const result = await selectDevicePlacementCandidates({
       environments: [nodeEnvironment("eligible", 1)],

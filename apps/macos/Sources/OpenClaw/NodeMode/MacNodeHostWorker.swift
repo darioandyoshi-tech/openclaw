@@ -384,7 +384,6 @@ final class MacNodeHostWorker: MacNodeHostWorking, @unchecked Sendable {
         let privateRuntimePath = launch.environment["PATH"].map { $0 + ":" } ?? ""
         environment["PATH"] = privateRuntimePath + CommandResolver.preferredPaths().joined(separator: ":")
         environment["OPENCLAW_NODE_EXEC_HOST"] = "app"
-        environment["OPENCLAW_NODE_EXEC_FALLBACK"] = "0"
         self.launchedWorker = launch
         self.stdinPipe = stdinPipe
         self.stdoutPipe = stdoutPipe

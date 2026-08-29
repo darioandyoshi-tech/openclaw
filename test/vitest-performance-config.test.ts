@@ -12,7 +12,7 @@ describe("loadVitestExperimentalConfig", () => {
     expect(loadVitestExperimentalConfig({}, "linux")).toEqual({
       experimental: {
         fsModuleCache: true,
-        fsModuleCachePath: path.join(process.cwd(), ".cache", "vitest", "default"),
+        fsModuleCachePath: path.join(process.cwd(), ".artifacts", "vitest", "default"),
       },
     });
   });
@@ -28,7 +28,7 @@ describe("loadVitestExperimentalConfig", () => {
     ).toEqual({
       experimental: {
         fsModuleCache: true,
-        fsModuleCachePath: path.join(process.cwd(), ".cache", "vitest", "default"),
+        fsModuleCachePath: path.join(process.cwd(), ".artifacts", "vitest", "default"),
       },
     });
   });
@@ -64,7 +64,7 @@ describe("loadVitestExperimentalConfig", () => {
     ).toEqual({
       experimental: {
         fsModuleCache: true,
-        fsModuleCachePath: path.join(process.cwd(), ".cache", "vitest", "default"),
+        fsModuleCachePath: path.join(process.cwd(), ".artifacts", "vitest", "default"),
       },
     });
   });
@@ -92,7 +92,7 @@ describe("loadVitestExperimentalConfig", () => {
     ).toEqual({
       experimental: {
         fsModuleCache: true,
-        fsModuleCachePath: path.join(process.cwd(), ".cache", "vitest", "default"),
+        fsModuleCachePath: path.join(process.cwd(), ".artifacts", "vitest", "default"),
         importDurations: { print: true },
         printImportBreakdown: true,
       },

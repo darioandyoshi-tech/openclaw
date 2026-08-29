@@ -40,7 +40,6 @@ type ClaudeCliNodeInvokeDeps = Pick<
   | "resolveExecAsk"
   | "isCmdExeInvocation"
   | "sanitizeEnv"
-  | "runViaMacAppExecHost"
   | "buildExecEventPayload"
 > & {
   sendErrorResult: (
@@ -176,8 +175,6 @@ export async function handleClaudeCliNodeInvoke(params: {
       timeoutMs: request.timeoutMs,
     },
     skillBins: params.skillBins,
-    execHostEnforced: false,
-    execHostFallbackAllowed: true,
     resolveExecSecurity: params.deps.resolveExecSecurity,
     resolveExecAsk: params.deps.resolveExecAsk,
     isCmdExeInvocation: params.deps.isCmdExeInvocation,
@@ -210,7 +207,6 @@ export async function handleClaudeCliNodeInvoke(params: {
       }
       return runResult;
     },
-    runViaMacAppExecHost: params.deps.runViaMacAppExecHost,
     // Agent runs already report through the agent-run stream. Suppress the
     // system.run lifecycle side-channel, whose Gateway provenance is scoped
     // exclusively to system.run invokes.
@@ -251,6 +247,5 @@ export async function handleClaudeCliNodeInvoke(params: {
       });
     },
     sendExecFinishedEvent: async () => {},
-    preferMacAppExecHost: false,
   });
 }

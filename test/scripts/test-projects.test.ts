@@ -757,6 +757,21 @@ describe("scripts/test-projects changed-target routing", () => {
     );
   });
 
+  it("routes checkout fixture edits to all shared Git owner boundaries", () => {
+    expectChangedTargets(
+      ["test/scripts/fixtures/ci-platform-checkout.mjs"],
+      [
+        "test/scripts/ci-git-owner.test.ts",
+        "test/scripts/ci-linux-git.test.ts",
+        "test/scripts/ci-platform-checkout.test.ts",
+        "test/scripts/openclaw-performance-workflow.test.ts",
+        "test/scripts/openclaw-performance-git-lifecycle.test.ts",
+        "test/scripts/release-workflow-git-lifecycle.test.ts",
+        "test/scripts/ci-workflow-guards.test.ts",
+      ],
+    );
+  });
+
   it("keeps full release validation workflow edits on FRV contract tests", () => {
     expectChangedTargets(
       [".github/workflows/full-release-validation.yml"],
@@ -4284,8 +4299,8 @@ describe("scripts/test-projects Vitest cache isolation", () => {
     );
 
     expect(specs.map((spec) => spec.env.OPENCLAW_VITEST_FS_MODULE_CACHE_PATH)).toEqual([
-      path.join("/repo", ".cache", "vitest", "0-test-vitest-vitest.unit-fast.config.ts"),
-      path.join("/repo", ".cache", "vitest", "1-test-vitest-vitest.extension-memory.config.ts"),
+      path.join("/repo", ".artifacts", "vitest", "0-test-vitest-vitest.unit-fast.config.ts"),
+      path.join("/repo", ".artifacts", "vitest", "1-test-vitest-vitest.extension-memory.config.ts"),
     ]);
   });
 
