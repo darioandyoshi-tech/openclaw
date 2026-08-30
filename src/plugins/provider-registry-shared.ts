@@ -1,7 +1,12 @@
 // Shares provider registry normalization helpers across plugin paths.
 import { normalizeProviderId } from "@openclaw/model-catalog-core/provider-id";
-import { normalizeOptionalLowercaseString } from "@openclaw/normalization-core/string-coerce";
+import {
+  normalizeLowercaseStringOrEmpty,
+  normalizeOptionalLowercaseString,
+} from "@openclaw/normalization-core/string-coerce";
 import { isBlockedObjectKey } from "../infra/prototype-keys.js";
+import type { ProviderPlugin } from "./provider-plugin.types.js";
+import type { PluginRegistry } from "./registry-types.js";
 
 /** Normalizes provider ids used by capability-provider registries. */
 export function normalizeCapabilityProviderId(providerId: string | undefined): string | undefined {
@@ -21,6 +26,39 @@ export function matchesProviderPluginRef(
         (alias) => normalizeProviderId(alias) === normalized,
       )),
   );
+}
+
+/** Explicit API ownership suppresses unrelated aliases, while preserving literal provider ids. */
+export function matchesProviderRuntimePlugin(
+  plugin: ProviderPlugin,
+  provider: string,
+  ownerRefs: readonly string[],
+): boolean {
+  if (ownerRefs.length > 0) {
+    const normalized = normalizeLowercaseStringOrEmpty(provider);
+    return (
+      (Boolean(normalized) && normalizeLowercaseStringOrEmpty(plugin.id) === normalized) ||
+      ownerRefs.some((ownerRef) => matchesProviderPluginRef(plugin, ownerRef))
+    );
+  }
+  return matchesProviderPluginRef(plugin, provider);
+}
+
+export function listProviderRuntimePluginsInRegistry(
+  registry: PluginRegistry,
+): Array<ProviderPlugin & { pluginId: string }> {
+  return registry.providers.map((entry) => ({ ...entry.provider, pluginId: entry.pluginId }));
+}
+
+export function findProviderRuntimePluginInRegistry(params: {
+  registry: PluginRegistry;
+  provider: string;
+  ownerRefs: readonly string[];
+}): ProviderPlugin | undefined {
+  const entry = params.registry.providers.find(({ provider }) =>
+    matchesProviderRuntimePlugin(provider, params.provider, params.ownerRefs),
+  );
+  return entry ? { ...entry.provider, pluginId: entry.pluginId } : undefined;
 }
 
 /** Builds canonical and alias lookup maps for capability providers. */

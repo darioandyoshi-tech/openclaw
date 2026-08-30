@@ -19,8 +19,7 @@ import type { OpenClawConfig } from "../config/types.openclaw.js";
 import { providerUsageLabel } from "../infra/provider-usage.shared.js";
 import type { UsageProviderId } from "../infra/provider-usage.types.js";
 import { getCurrentPluginMetadataSnapshot } from "./current-plugin-metadata-snapshot.js";
-import { normalizeProviderModelIdWithManifest } from "./manifest-model-id-normalization.js";
-import type { PluginManifestRecord, PluginManifestRegistry } from "./manifest-registry.js";
+import type { PluginManifestRegistry } from "./manifest-registry.js";
 import { resolvePluginMetadataSnapshot } from "./plugin-metadata-snapshot.js";
 import type {
   PluginMetadataRegistryView,
@@ -72,7 +71,6 @@ import type {
   ProviderFailoverErrorContext,
   ProviderNormalizeToolSchemasContext,
   ProviderNormalizeConfigContext,
-  ProviderNormalizeModelIdContext,
   ProviderReasoningOutputMode,
   ProviderReasoningOutputModeContext,
   ProviderNormalizeResolvedModelContext,
@@ -154,6 +152,7 @@ export {
   wrapProviderSimpleCompletionStreamFn,
   wrapProviderStreamFn,
 };
+export { normalizeProviderModelIdWithPlugin } from "./provider-model-normalization.runtime.js";
 
 function resolveProviderPluginsForCatalogHooks(params: {
   config?: OpenClawConfig;
@@ -375,21 +374,6 @@ export function applyProviderResolvedTransportWithPlugin(params: {
     api: nextApi as ProviderRuntimeModel["api"],
     baseUrl: nextBaseUrl,
   };
-}
-
-export function normalizeProviderModelIdWithPlugin(params: {
-  provider: string;
-  config?: OpenClawConfig;
-  workspaceDir?: string;
-  env?: NodeJS.ProcessEnv;
-  plugins?: readonly Pick<PluginManifestRecord, "modelIdNormalization">[];
-  context: ProviderNormalizeModelIdContext;
-}): string | undefined {
-  const plugin = resolveProviderHookPlugin(params);
-  return (
-    normalizeOptionalString(plugin?.normalizeModelId?.(params.context)) ??
-    normalizeProviderModelIdWithManifest(params)
-  );
 }
 
 export function normalizeProviderTransportWithPlugin(params: {

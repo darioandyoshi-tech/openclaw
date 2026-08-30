@@ -1937,7 +1937,6 @@ src/agents/provider-attribution.ts	14
 src/agents/provider-auth-aliases.ts	1
 src/agents/provider-http-errors.ts	1
 src/agents/provider-local-service.ts	4
-src/agents/provider-model-normalization.runtime.ts	1
 src/agents/provider-model-route.ts	1
 src/agents/provider-request-config.ts	6
 src/agents/provider-secret-egress.ts	3
@@ -3535,7 +3534,7 @@ src/plugins/provider-auth-choice-helpers.ts	12
 src/plugins/provider-catalog-result.ts	8
 src/plugins/provider-discovery.runtime.ts	2
 src/plugins/provider-discovery.ts	2
-src/plugins/provider-hook-runtime.ts	4
+src/plugins/provider-hook-runtime.ts	2
 src/plugins/provider-model-compat.ts	7
 src/plugins/provider-model-helpers.ts	4
 src/plugins/provider-model-primary.ts	1
