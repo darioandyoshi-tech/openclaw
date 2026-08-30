@@ -36,11 +36,15 @@ export function setCurrentPluginMetadataSnapshotState(
   compatibleConfigFingerprints?: readonly string[],
   manifestModelIdNormalizationRecords?: readonly ManifestModelIdNormalizationRecord[],
   owner: "gateway" | "operation" = "operation",
+  envFingerprint?: string,
+  defaultDiscoveryCompatible = false,
 ): CurrentPluginMetadataSnapshotRevision {
   const state = getProcessPluginCache().metadata.current;
   state.snapshot = snapshot;
   state.owner = owner;
   state.configFingerprint = snapshot ? configFingerprint : undefined;
+  state.envFingerprint = snapshot ? envFingerprint : undefined;
+  state.defaultDiscoveryCompatible = Boolean(snapshot && defaultDiscoveryCompatible);
   state.compatiblePolicyHashes = snapshot ? compatiblePolicyHashes : undefined;
   state.compatibleConfigFingerprints = snapshot ? compatibleConfigFingerprints : undefined;
   state.manifestModelIdNormalizationRecords = snapshot
@@ -51,24 +55,10 @@ export function setCurrentPluginMetadataSnapshotState(
   return state.revision;
 }
 
-/** Clears the process-current plugin metadata snapshot. */
-function clearCurrentPluginMetadataSnapshotState(): CurrentPluginMetadataSnapshotRevision {
-  const state = getProcessPluginCache().metadata.current;
-  state.snapshot = undefined;
-  state.owner = "operation";
-  state.configFingerprint = undefined;
-  state.compatiblePolicyHashes = undefined;
-  state.compatibleConfigFingerprints = undefined;
-  state.manifestModelIdNormalizationRecords = undefined;
-  setCurrentManifestModelIdNormalizationRecords(undefined);
-  state.revision = Symbol("plugin-metadata-snapshot");
-  return state.revision;
-}
-
 /** Clears the snapshot, its identity cache, and process-wide model normalization. */
 export function clearCurrentPluginMetadataSnapshot(): void {
   currentPluginMetadataConfigIdentityCache.clear();
-  clearCurrentPluginMetadataSnapshotState();
+  setCurrentPluginMetadataSnapshotState(undefined, undefined);
 }
 
 /** Install-ledger writes cannot retire metadata owned by a running Gateway. */
@@ -101,6 +91,8 @@ export function getCurrentPluginMetadataSnapshotState(): {
   snapshot: unknown;
   owner: "gateway" | "operation";
   configFingerprint: string | undefined;
+  envFingerprint: string | undefined;
+  defaultDiscoveryCompatible: boolean;
   compatiblePolicyHashes: readonly string[] | undefined;
   compatibleConfigFingerprints: readonly string[] | undefined;
   manifestModelIdNormalizationRecords: readonly ManifestModelIdNormalizationRecord[] | undefined;
@@ -111,6 +103,8 @@ export function getCurrentPluginMetadataSnapshotState(): {
     snapshot: state.snapshot,
     owner: state.owner,
     configFingerprint: state.configFingerprint,
+    envFingerprint: state.envFingerprint,
+    defaultDiscoveryCompatible: state.defaultDiscoveryCompatible,
     compatiblePolicyHashes: state.compatiblePolicyHashes,
     compatibleConfigFingerprints: state.compatibleConfigFingerprints,
     manifestModelIdNormalizationRecords: state.manifestModelIdNormalizationRecords,
