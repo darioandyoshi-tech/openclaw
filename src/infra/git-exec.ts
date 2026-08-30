@@ -67,17 +67,13 @@ export async function requireGitCommand(
   args: string[],
   options: { env?: NodeJS.ProcessEnv; input?: string | Uint8Array; timeoutMs?: number } = {},
 ): Promise<string> {
-  const result = await executeGitCommand(cwd, args, options);
-  if (result.code !== 0) {
-    throw createGitCommandError(`git ${args.join(" ")}`, result);
-  }
-  return result.stdout.trim();
+  return (await requireGitCommandRaw(cwd, args, options)).trim();
 }
 
 export async function requireGitCommandRaw(
   cwd: string,
   args: string[],
-  options: { env?: NodeJS.ProcessEnv; input?: string | Uint8Array } = {},
+  options: Parameters<typeof requireGitCommand>[2] = {},
 ): Promise<string> {
   const result = await executeGitCommand(cwd, args, options);
   if (result.code !== 0) {
