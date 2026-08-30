@@ -20,7 +20,14 @@ beforeEach(() => {
   restoreDialogPolyfill = installDialogPolyfill();
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await vi.dynamicImportSettled();
+  // Cancel through the owner before removing DOM; failed assertions must not
+  // leave a pending move request holding the dialog's reentrancy guard.
+  for (const modal of document.body.querySelectorAll("openclaw-modal-dialog")) {
+    modal.dispatchEvent(new CustomEvent("modal-cancel", { cancelable: true }));
+  }
+  await vi.dynamicImportSettled();
   document.body.replaceChildren();
   restoreDialogPolyfill();
   vi.unstubAllGlobals();
@@ -290,7 +297,7 @@ describe("chat pane placement", () => {
     ).toBe(true);
     expect(document.body.textContent).toContain("No worker slots are available");
     expect(document.body.textContent).toContain("Device unavailable");
-    expect(document.body.textContent).toContain("Session hosting is disabled");
+    expect(document.body.textContent).toContain("Session hosting is unavailable");
     document.body.querySelector<HTMLButtonElement>('[data-value="device:runner"]')?.click();
     const moveButton = [...document.body.querySelectorAll<HTMLButtonElement>("button")].find(
       (button) => button.textContent?.trim() === "Move session",
