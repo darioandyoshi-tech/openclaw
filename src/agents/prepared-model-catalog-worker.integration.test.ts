@@ -26,6 +26,7 @@ import {
   createPreparedModelCatalogWorker,
   createPreparedModelCatalogWorkerInput,
 } from "./prepared-model-catalog-worker.js";
+import { prepareScopedReadOnlyLiveModelCatalog } from "./prepared-model-runtime.scoped-catalog.js";
 import {
   PROVIDER_ID,
   HARNESS_ID,
@@ -255,6 +256,36 @@ async function createReadyWorkerFixture(spinMs: number) {
 describe("prepared model catalog worker boundary", () => {
   beforeEach(() => {
     vi.stubEnv("CODEX_HOME", makeTempDir("openclaw-worker-empty-codex-"));
+  });
+
+  it("fences a retired scoped owner before real plugin catalog I/O", async () => {
+    const fixture = createCatalogFixture(0);
+    const input = {
+      agentId: "main",
+      agentDir: fixture.agentDir,
+      inheritedAuthDir: fixture.agentDir,
+      workspaceDir: fixture.workspaceDir,
+      config: fixture.config,
+      env: fixture.env,
+      readOnly: true,
+    };
+    const retired = new Error("catalog owner retired");
+
+    await expect(
+      prepareScopedReadOnlyLiveModelCatalog(input, [PROVIDER_ID], () => {
+        throw retired;
+      }),
+    ).rejects.toBe(retired);
+    expect(fs.existsSync(fixture.marker)).toBe(false);
+
+    const current = await prepareScopedReadOnlyLiveModelCatalog(input, [PROVIDER_ID]);
+    expect(fs.readFileSync(fixture.marker, "utf8")).toBe("start\ndone\n");
+    expect(current.entries).toContainEqual(
+      expect.objectContaining({
+        provider: PROVIDER_ID,
+        id: "proof-refresh-1-sqlite-true-shared-true-unrelated-true",
+      }),
+    );
   });
 
   it("preserves prepared catalog ownership across ambient environment changes", async () => {

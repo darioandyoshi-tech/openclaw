@@ -436,6 +436,7 @@ describe("prepared model runtime Gateway catalog mode", () => {
     const config = {
       agents: { defaults: { model: { primary: "openai/gpt-5.5" } } },
     };
+    const assertOwnerCurrent = vi.fn();
 
     await prepareScopedReadOnlyLiveModelCatalog(
       {
@@ -448,6 +449,7 @@ describe("prepared model runtime Gateway catalog mode", () => {
         readOnly: true,
       },
       ["anthropic"],
+      assertOwnerCurrent,
     );
 
     expect(mocks.planOpenClawModelsJsonSource).toHaveBeenCalledWith(
@@ -456,6 +458,7 @@ describe("prepared model runtime Gateway catalog mode", () => {
       expect.objectContaining({
         providerDiscoveryProviderIds: ["anthropic"],
         providerDiscoveryTimeoutMs: expect.any(Number),
+        assertDiscoveryCurrent: assertOwnerCurrent,
       }),
     );
     expect(mocks.planOpenClawModelsJsonSource).not.toHaveBeenCalledWith(

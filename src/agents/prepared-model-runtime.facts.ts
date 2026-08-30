@@ -617,6 +617,7 @@ export async function prepareAgentCatalogSource(
   sourceOptions: {
     authStore?: AuthProfileStore;
     providerDiscoveryProviderIds?: readonly string[];
+    assertDiscoveryCurrent?: () => void;
   } = {},
 ): Promise<PreparedModelRuntimeCatalogSource> {
   const { env, input, providerIds } = agentFacts;
@@ -654,6 +655,9 @@ export async function prepareAgentCatalogSource(
       ...options,
       ...(sourceOptions.authStore ? { authStore: sourceOptions.authStore } : {}),
       ...(catalogMode === "live" ? { onProviderCatalogOutcome: recordProviderOutcome } : {}),
+      ...(sourceOptions.assertDiscoveryCurrent
+        ? { assertDiscoveryCurrent: sourceOptions.assertDiscoveryCurrent }
+        : {}),
     });
     return {
       modelsJsonContents: source.modelsJsonContents,
