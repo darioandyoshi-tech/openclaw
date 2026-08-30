@@ -242,7 +242,7 @@ export function createHarness(
         }),
       };
     }),
-    reconcileWorkspace: vi.fn(async (request) => {
+    reconcileWorkspace: vi.fn<WorkerTunnelHandle["reconcileWorkspace"]>(async (request) => {
       log.push("workspace:reconcile");
       if (options.reconcileFails || remainingReconcileFailures > 0) {
         remainingReconcileFailures -= 1;
