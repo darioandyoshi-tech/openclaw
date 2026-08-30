@@ -72,9 +72,9 @@ describe("device placement projection", () => {
       environment: node({ sessionHost: false, workerSlots: undefined }),
       selectable: false,
       reason:
-        "Session hosting is disabled. Run openclaw connect --service --session-host on the device.",
+        "Session hosting is unavailable. Enable nodeHost.workerRuns.enabled on the device, then restart its app or node service and approve its commands.",
       facts: [
-        "Session hosting is disabled. Run openclaw connect --service --session-host on the device.",
+        "Session hosting is unavailable. Enable nodeHost.workerRuns.enabled on the device, then restart its app or node service and approve its commands.",
         "macOS",
         "Camera",
       ],

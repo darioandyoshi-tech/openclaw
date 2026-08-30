@@ -532,7 +532,9 @@ restarted before selection.
 If a required command is unavailable, first check that its plugin is installed
 and enabled on the device. Reconnect the app or node host, approve its updated
 command surface, and check `gateway.nodes.commands.allow`; changing the Gateway
-allowlist alone cannot install a missing device plugin.
+allowlist alone cannot install a missing device plugin. Approving an updated
+command surface refreshes hosting automatically; you do not need to restart the
+app or node host a second time.
 
 While node inventory refreshes, or if that refresh fails, the picker keeps known
 devices visible but disables remote selection and Start until fresh inventory

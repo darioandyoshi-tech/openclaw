@@ -4,6 +4,7 @@ import {
   NODE_RUNNER_INVENTORY_UPDATE_METHOD,
   NODE_WORKER_SUPERVISOR_PROTOCOL_FEATURE,
 } from "../infra/node-runner-inventory.js";
+import { createDeferredCore } from "../shared/deferred.js";
 import type { configureNodeHost } from "./config.js";
 import { runNodeHost } from "./runner.js";
 
@@ -524,6 +525,78 @@ describe("runNodeHost connection and optional publications", () => {
       });
     });
   });
+
+  it.each(["acknowledged", "late-success", "late-failure"] as const)(
+    "refreshes runner consent on approval without adopting the %s publication",
+    async (settlement) => {
+      const initial = createDeferredCore<unknown>();
+      await withReadyNodeHost(async ({ client, options }) => {
+        let publications = 0;
+        client.request.mockImplementation((method) => {
+          if (method === NODE_RUNNER_INVENTORY_UPDATE_METHOD && ++publications === 1) {
+            return initial.promise;
+          }
+          return Promise.resolve({});
+        });
+        const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+        try {
+          options?.onHelloOk?.({
+            protocol: 4,
+            features: { methods: [], events: [] },
+          } as unknown as Parameters<NonNullable<GatewayClientOptions["onHelloOk"]>>[0]);
+          await vi.waitFor(() => expect(publications).toBe(1));
+          if (settlement === "acknowledged") {
+            initial.resolve({});
+            await new Promise<void>((resolve) => {
+              setImmediate(resolve);
+            });
+          }
+          options?.onEvent?.({
+            type: "event",
+            event: "node.pair.resolved",
+            payload: { decision: "rejected" },
+          });
+          expect(publications).toBe(1);
+          options?.onEvent?.({
+            type: "event",
+            event: "node.pair.resolved",
+            payload: { decision: "approved" },
+          });
+          await vi.waitFor(() => expect(publications).toBe(2));
+          vi.useFakeTimers();
+          if (settlement === "late-failure") {
+            initial.reject(new Error("old pairing publication failed"));
+          } else {
+            initial.resolve({});
+          }
+          await vi.advanceTimersByTimeAsync(5_000);
+          expect(publications).toBe(2);
+          expect(stderr).not.toHaveBeenCalledWith(expect.stringContaining("publish failed"));
+          expect(
+            client.request.mock.calls.filter(
+              ([method]) => method === NODE_PLUGIN_TOOLS_UPDATE_METHOD,
+            ),
+          ).toHaveLength(1);
+          expect(
+            client.request.mock.calls.findLast(
+              ([method]) => method === NODE_RUNNER_INVENTORY_UPDATE_METHOD,
+            )?.[1],
+          ).toMatchObject({ workerHost: { enabled: false } });
+          options?.onClose?.(1000, "node disconnected");
+          options?.onEvent?.({
+            type: "event",
+            event: "node.pair.resolved",
+            payload: { decision: "approved" },
+          });
+          expect(publications).toBe(2);
+        } finally {
+          initial.resolve({});
+          vi.useRealTimers();
+          stderr.mockRestore();
+        }
+      });
+    },
+  );
 
   it("deduplicates unchanged successful inventory while publishing and after settlement", async () => {
     let resolveInitialPublication: (() => void) | undefined;
