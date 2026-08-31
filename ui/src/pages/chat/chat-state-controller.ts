@@ -274,6 +274,10 @@ export class ChatStateController<TState extends ChatPageHost> implements Reactiv
     this.composerPersistence.start();
   }
 
+  pauseComposerPersistence() {
+    this.composerPersistence.stop();
+  }
+
   persistComposerForEviction(): ChatComposerPersistResult {
     return this.composerPersistence.persistForRouteSwitchResult();
   }

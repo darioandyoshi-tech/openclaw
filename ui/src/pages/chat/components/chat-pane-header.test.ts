@@ -1,6 +1,5 @@
-/* @vitest-environment jsdom */
-
 import { html, render } from "lit";
+/* @vitest-environment jsdom */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GatewayBrowserClient } from "../../../api/gateway.ts";
 import type { GatewaySessionRow, PresenceEntry, SessionsListResult } from "../../../api/types.ts";
@@ -14,6 +13,7 @@ import {
   type ShellNavDrawerToggleDetail,
 } from "../../../components/command-palette-contract.ts";
 import type { SessionCapability } from "../../../lib/sessions/index.ts";
+import { resolveSessionWorkspace } from "../../../lib/sessions/workspace.ts";
 import { createTestChatPane } from "../chat-pane.test-support.ts";
 import type { ChatPageHost } from "../chat-state-host.ts";
 import { createBackgroundTasksProps } from "./chat-background-tasks.ts";
@@ -26,7 +26,6 @@ import {
   canRevealSessionWorkspace,
   renderChatPaneHeader,
   resolveChatPaneParentSession,
-  resolveChatPaneWorkspace,
 } from "./chat-pane-header.ts";
 import { createSessionWorkspaceProps } from "./chat-session-workspace.ts";
 
@@ -985,7 +984,7 @@ describe("chat pane workspace chip icon", () => {
 describe("chat pane workspace resolution", () => {
   it("uses worktree repo vocabulary with spawned cwd", () => {
     expect(
-      resolveChatPaneWorkspace({
+      resolveSessionWorkspace({
         session: row({
           spawnedCwd: "/tmp/worktrees/title-bar",
           worktree: { id: "wt-1", branch: "title-bar", repoRoot: "/src/openclaw" },
@@ -996,7 +995,7 @@ describe("chat pane workspace resolution", () => {
 
   it("does not substitute the agent workspace for a missing worktree checkout", () => {
     expect(
-      resolveChatPaneWorkspace({
+      resolveSessionWorkspace({
         session: row({
           worktree: { id: "wt-missing", branch: "feature", repoRoot: "/src/openclaw" },
         }),
@@ -1008,7 +1007,7 @@ describe("chat pane workspace resolution", () => {
 
   it("matches the gateway root order: spawned workspace before spawned cwd", () => {
     expect(
-      resolveChatPaneWorkspace({
+      resolveSessionWorkspace({
         session: row({
           spawnedWorkspaceDir: "/src/openclaw",
           spawnedCwd: "/src/openclaw/packages/nested",
@@ -1017,7 +1016,7 @@ describe("chat pane workspace resolution", () => {
     ).toEqual({ root: "/src/openclaw", label: "openclaw" });
     // execCwd is exec-node routing state; it never overrides local facts.
     expect(
-      resolveChatPaneWorkspace({
+      resolveSessionWorkspace({
         session: row({ execCwd: "/remote/stale", spawnedCwd: "/src/openclaw" }),
       }),
     ).toEqual({ root: "/src/openclaw", label: "openclaw" });
@@ -1025,7 +1024,7 @@ describe("chat pane workspace resolution", () => {
 
   it("prefers exec cwd and falls back to the agent workspace", () => {
     expect(
-      resolveChatPaneWorkspace({
+      resolveSessionWorkspace({
         session: row({ execNode: "build-mac", execCwd: "/remote/build" }),
         agentWorkspace: "/local/default",
       }),
@@ -1033,13 +1032,13 @@ describe("chat pane workspace resolution", () => {
     // Without execCwd, gateway-local facts must not stand in for a path that
     // lives on another machine.
     expect(
-      resolveChatPaneWorkspace({
+      resolveSessionWorkspace({
         session: row({ execNode: "build-mac", spawnedCwd: "/local/spawned" }),
         agentWorkspace: "/local/default",
         worktreePath: "/local/worktree",
       }),
     ).toEqual({ root: null, label: null });
-    expect(resolveChatPaneWorkspace({ session: row(), agentWorkspace: "/src/openclaw" })).toEqual({
+    expect(resolveSessionWorkspace({ session: row(), agentWorkspace: "/src/openclaw" })).toEqual({
       root: "/src/openclaw",
       label: "openclaw",
     });
