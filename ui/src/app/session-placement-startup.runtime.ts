@@ -191,7 +191,6 @@ export default function createApplicationPlacementStartupRuntime(
     recovery: SessionPlacementRecovery,
     recovering: boolean,
   ) => {
-    let accepted = false;
     let currentRecovery = recovery;
     void advanceSessionPlacementDraft({
       client: entry.scope.client,
@@ -237,8 +236,8 @@ export default function createApplicationPlacementStartupRuntime(
           }
           return;
         }
+        // Retained custody already owns the visible input; a local handoff would duplicate it.
         if (result.status === "started") {
-          accepted = true;
           prepareAcceptedMessage(entry, currentRecovery, result);
         }
         retireEntry(entry);
@@ -248,11 +247,7 @@ export default function createApplicationPlacementStartupRuntime(
           pauseEntry(entry, currentRecovery, formatUiError(error));
         }
       })
-      .finally(() => {
-        if (!accepted) {
-          refreshAfterFailure(entry);
-        }
-      });
+      .finally(() => refreshAfterFailure(entry));
   };
 
   const start = (input: PlacementStartupInput) => {

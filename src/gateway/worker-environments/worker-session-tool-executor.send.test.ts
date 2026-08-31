@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createDeferred } from "../../../test/helpers/promise.js";
 import type { SessionEntry } from "../../config/sessions.js";
+import { releaseAgentRunDelegatedAuthority } from "../../infra/agent-run-registry.js";
 import { parseAgentSessionKey } from "../../routing/session-key.js";
 import {
   SOURCE,
@@ -90,19 +92,21 @@ vi.mock("../../agents/tools/in-process-gateway.js", () => ({
   },
 }));
 
+const fixtureMocks = {
+  sessionEntries,
+  delivered,
+  gatewayRequest,
+  gatewayCreate,
+  gatewayRuntimeIdentity,
+  dispatchChild,
+  spawnCallerIdentity,
+  spawnArgs,
+  githubPublicationRequest,
+  scopedSessionAccess,
+};
+
 describe("worker session tool send delivery", () => {
-  const getFixture = installWorkerSessionToolTestFixture({
-    sessionEntries,
-    delivered,
-    gatewayRequest,
-    gatewayCreate,
-    gatewayRuntimeIdentity,
-    dispatchChild,
-    spawnCallerIdentity,
-    spawnArgs,
-    githubPublicationRequest,
-    scopedSessionAccess,
-  });
+  const getFixture = installWorkerSessionToolTestFixture(fixtureMocks);
   let placements: ReturnType<typeof getFixture>["placements"];
   let identity: ReturnType<typeof getFixture>["identity"];
   let execute: ReturnType<typeof getFixture>["execute"];
@@ -364,3 +368,38 @@ describe("worker session tool send delivery", () => {
     },
   );
 });
+
+describe.each([false, true])(
+  "worker send source authority (audit=%s)",
+  (collectExecutionIdentity) => {
+    const getFixture = installWorkerSessionToolTestFixture(fixtureMocks, {
+      collectExecutionIdentity,
+    });
+
+    it("does not deliver to a sibling after the source owner closes during admission", async () => {
+      const { setEntry, send, placements, sourceClaim, delegatedAuthorities } = getFixture();
+      setEntry(PARENT.sessionKey, PARENT.sessionId);
+      setEntry(SOURCE.sessionKey, SOURCE.sessionId, PARENT);
+      setEntry(TARGET.sessionKey, TARGET.sessionId, PARENT);
+      const admissionStarted = createDeferred();
+      const finishAdmission = createDeferred();
+      scopedSessionAccess.mockImplementationOnce(async (params) => {
+        admissionStarted.resolve();
+        await finishAdmission.promise;
+        return await params.run();
+      });
+
+      const pending = send("source-closes-during-sibling-admission");
+      await admissionStarted.promise;
+      releaseAgentRunDelegatedAuthority(delegatedAuthorities[0]!);
+      const drained = placements.closeWorkerTurnToolState(sourceClaim);
+      expect(placements.validateTurnClaim(sourceClaim)).toBe(true);
+      finishAdmission.resolve();
+      const result = await pending;
+      await drained;
+
+      expect(delivered).not.toHaveBeenCalled();
+      expect(result.resultJson).toContain('"status":"error"');
+    });
+  },
+);
