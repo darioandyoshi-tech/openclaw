@@ -3170,6 +3170,10 @@ jobs:
             fi
           done
 
+      - name: Prove real plugin-worker owner fencing
+        if: matrix.task == 'lint'
+        run: node scripts/run-vitest.mjs src/agents/prepared-model-catalog-worker.integration.test.ts
+
       - name: Run check shard
         env:
           FROZEN_TARGET: ${{ needs.preflight.outputs.frozen_target }}
