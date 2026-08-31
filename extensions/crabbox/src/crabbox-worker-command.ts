@@ -4,6 +4,8 @@ import { CRABBOX_LIFECYCLE_TIMEOUT_MS } from "./crabbox-worker-timeouts.js";
 
 const MAX_OUTPUT_BYTES = 64 * 1024;
 
+export type LeaseCommandContext = { binary: string; id: string; provider: string };
+
 export type CrabboxCommandRunner = (
   argv: string[],
   options: {
@@ -26,8 +28,10 @@ export async function runCrabboxCommand(params: {
   signal?: AbortSignal;
   timeoutMs: number;
 }): Promise<SpawnResult> {
+  params.signal?.throwIfAborted();
+  let result: SpawnResult;
   try {
-    return await params.runCommand([params.binary, ...params.args], {
+    result = await params.runCommand([params.binary, ...params.args], {
       timeoutMs: params.timeoutMs,
       maxOutputBytes: MAX_OUTPUT_BYTES,
       killProcessTree: true,
@@ -36,8 +40,12 @@ export async function runCrabboxCommand(params: {
       ...(params.signal ? { signal: params.signal } : {}),
     });
   } catch {
+    params.signal?.throwIfAborted();
     throw new Error(`Crabbox ${params.action} could not start`);
   }
+  // The runner owns child/tree settlement; cancellation must not release that custody early.
+  params.signal?.throwIfAborted();
+  return result;
 }
 
 // Recognition failure does not prove resource absence; only the stop owner can confirm cleanup.
@@ -65,6 +73,30 @@ export function isUnrecognizedLease(result: SpawnResult, identifier: string): bo
     /\bcoordinator GET \S*\/v1\/leases\/\S+:\s*http 404\b/iu.test(output) ||
     (result.code === 4 && /\bunknown lease(?:\s|:)/iu.test(output))
   );
+}
+
+export function leaseRunArgs(
+  context: LeaseCommandContext,
+  forwardedEnvNames: readonly string[] = [],
+  envProfilePath?: string,
+): string[] {
+  return [
+    "run",
+    "--provider",
+    context.provider,
+    "--network",
+    "public",
+    "--tailscale=false",
+    "--id",
+    context.id,
+    "--keep=true",
+    // Workspace transfer is owned by the worker tunnel; lease scripts must not
+    // rsync the gateway checkout into the box just to execute setup or diagnostics.
+    "--no-sync",
+    ...forwardedEnvNames.flatMap((name) => ["--allow-env", name]),
+    ...(envProfilePath ? ["--env-from-profile", envProfilePath] : []),
+    "--script-stdin",
+  ];
 }
 
 export async function stopCrabboxLease(params: {

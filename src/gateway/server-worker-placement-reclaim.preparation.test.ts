@@ -37,11 +37,12 @@ function fixture(name: string, state: "active" | "failed" | "local" | "reclaimed
     revokeSessionAuthority: vi.fn(),
   });
   const run = vi.fn(async () => ({ ...placement, state: "reclaimed" as const }) as never);
-  const admit = () =>
+  const admit = (onInterrupt?: () => void) =>
     beginSessionWorkAdmission({
       scope: target.storePath,
       identities: [request.sessionKey, request.sessionId],
       assertAllowed: () => {},
+      onInterrupt,
     });
   return {
     ...request,
@@ -90,32 +91,43 @@ it.each(["authorization", "incarnation"] as const)(
     const entered = createDeferredCore();
     const release = createDeferredCore();
     let authorized = true;
+    const interrupted = vi.fn();
+    const acquired = await f.admit(() => {
+      interrupted();
+      acquired.release();
+    });
     f.cancel.mockImplementation(async ({ assertCurrent }) => {
       assertCurrent();
       entered.resolve();
       await release.promise;
     });
-    const stop = f.prepare({
-      authorize: () => {
-        if (!authorized) {
-          throw new Error("access revoked");
-        }
-      },
-    });
-    const rejected = expect(stop).rejects.toThrow(
-      change === "authorization" ? "access revoked" : "Session",
-    );
-    await entered.promise;
-    if (change === "authorization") {
-      authorized = false;
-    } else {
-      f.entry.lifecycleRevision = "replacement-with-same-session-id";
+    try {
+      const stop = f.prepare({
+        authorize: () => {
+          if (!authorized) {
+            throw new Error("access revoked");
+          }
+        },
+      });
+      const rejected = expect(stop).rejects.toThrow(
+        change === "authorization" ? "access revoked" : "Session",
+      );
+      await entered.promise;
+      if (change === "authorization") {
+        authorized = false;
+      } else {
+        f.entry.lifecycleRevision = "replacement-with-same-session-id";
+      }
+      release.resolve();
+      await rejected;
+      expect(interrupted).not.toHaveBeenCalled();
+      expect(f.run).not.toHaveBeenCalled();
+      const fresh = await f.admit();
+      fresh.release();
+    } finally {
+      release.resolve();
+      acquired.release();
     }
-    release.resolve();
-    await rejected;
-    expect(f.run).not.toHaveBeenCalled();
-    const fresh = await f.admit();
-    fresh.release();
   },
 );
 

@@ -4,6 +4,7 @@ import { resolveNodeCommandAllowlist } from "../node-command-policy.js";
 import { resolveDevicePlacementEligibility } from "./device-placement-eligibility.js";
 import {
   createPlacementFailureActions,
+  isExactAttachedEnvironment,
   type WorkerActivationBarrier,
   type WorkerActiveDispatchPlacement,
   type WorkerDispatchEnvironmentService,
@@ -70,10 +71,9 @@ type WorkerLocalDispatchBarrier = (params: {
   agentId: string;
   executionMode: WorkerPlacementDispatchRequest["executionMode"];
   authorize?: WorkerPlacementAuthorization;
+  signal?: AbortSignal;
   startDispatch: () => WorkerDispatchPlacement;
 }) => Promise<WorkerDispatchPlacement>;
-
-type WorkerDrainingDispatchPlacement = Extract<WorkerDispatchPlacement, { state: "draining" }>;
 
 type WorkerPlacementDispatchOptions = WorkerPlacementReclaimBarriers & {
   placements: WorkerDispatchPlacementStore;
@@ -119,21 +119,6 @@ type WorkerPlacementDispatchOptions = WorkerPlacementReclaimBarriers & {
   resolveDevicePlacementRequirement?: WorkerDevicePlacementRequirementResolver;
   isCurrentNodePlacement?: WorkerNodePlacementAuthority;
 };
-
-function isExactAttachedEnvironment(
-  environment: ReturnType<WorkerDispatchEnvironmentService["get"]>,
-  placement: WorkerActiveDispatchPlacement | WorkerDrainingDispatchPlacement,
-): boolean {
-  return Boolean(
-    environment &&
-    environment.environmentId === placement.environmentId &&
-    environment.state === "attached" &&
-    environment.destroyRequestedAtMs === null &&
-    environment.ownerEpoch === placement.activeOwnerEpoch &&
-    environment.attachedSessionIds.length === 1 &&
-    environment.attachedSessionIds[0] === placement.sessionId,
-  );
-}
 
 export function createWorkerPlacementDispatchService(options: WorkerPlacementDispatchOptions) {
   const { environments, placements } = options;
@@ -188,7 +173,14 @@ export function createWorkerPlacementDispatchService(options: WorkerPlacementDis
     request: WorkerPlacementDispatchRequest,
     onTransition?: (placement: WorkerDispatchPlacement) => void,
     authorize?: WorkerPlacementAuthorization,
+    signal?: AbortSignal,
   ): Promise<WorkerActiveDispatchPlacement> => {
+    const assertCurrent = signal
+      ? () => {
+          signal.throwIfAborted();
+          authorize?.();
+        }
+      : authorize;
     let placement: WorkerDispatchPlacement | undefined;
     const validateDevicePlacement = async () => {
       if (!request.deviceId) {
@@ -205,12 +197,14 @@ export function createWorkerPlacementDispatchService(options: WorkerPlacementDis
       }
     };
     try {
+      signal?.throwIfAborted();
       placement = await options.runLocalBarrier({
         sessionId: request.sessionId,
         sessionKey: request.sessionKey,
         agentId: request.agentId,
         executionMode: request.executionMode,
-        authorize,
+        authorize: assertCurrent,
+        signal,
         startDispatch: () => {
           placement = placements.startDispatch({
             sessionId: request.sessionId,
@@ -241,9 +235,11 @@ export function createWorkerPlacementDispatchService(options: WorkerPlacementDis
         }
       }
       await validateDevicePlacement();
+      signal?.throwIfAborted();
       const localPath = await options.resolveWorkspacePath(request);
       // Workspace preparation yields; fence the current paired node again before durable provision.
       await validateDevicePlacement();
+      signal?.throwIfAborted();
       const idempotencyKey =
         request.idempotencyKey ?? `session-dispatch:${request.sessionId}:${placement.generation}`;
       const expectedEnvironmentId = deriveEnvironmentIntent(idempotencyKey).environmentId;
@@ -265,12 +261,14 @@ export function createWorkerPlacementDispatchService(options: WorkerPlacementDis
             idempotencyKey,
             request.machineClass,
             request.executionMode,
+            signal,
           )
         : await environments.create(
             request.profileId,
             idempotencyKey,
             request.machineClass,
             request.executionMode,
+            signal,
           );
       return await startup.continueProvisionedDispatch({
         request,
@@ -279,7 +277,8 @@ export function createWorkerPlacementDispatchService(options: WorkerPlacementDis
         expectedEnvironmentId,
         localPath,
         onTransition,
-        authorize,
+        authorize: assertCurrent,
+        signal,
       });
     } catch (error) {
       try {
@@ -683,12 +682,14 @@ export function createWorkerPlacementDispatchService(options: WorkerPlacementDis
     serialize: (
       run: () => Promise<WorkerReclaimPlacement>,
     ) => Promise<WorkerReclaimPlacement> = async (run) => await run(),
+    pendingDispatch?: { isCurrent: () => boolean; settled: Promise<unknown> },
   ): Promise<WorkerReclaimPlacement> => {
     const initial = placements.get(request.sessionId);
     return await options.runReclaimPreparation({
       ...request,
       authorize,
       beforeDrain,
+      pendingDispatch,
       run: (reauthorize) =>
         serialize(() => reclaimCurrent(request, reauthorize, beforeDrain, initial)),
     });

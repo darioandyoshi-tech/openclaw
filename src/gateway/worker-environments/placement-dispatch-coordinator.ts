@@ -2,9 +2,16 @@ import { isDeepStrictEqual } from "node:util";
 import type { WorkerPlacementDispatchService } from "./placement-dispatch.js";
 import type { WorkerPlacementDispatchRequest } from "./service-contract.js";
 
+export type WorkerPlacementDispatchAdmission = <T>(
+  request: Pick<WorkerPlacementDispatchRequest, "sessionId" | "sessionKey" | "agentId">,
+  run: (signal?: AbortSignal) => Promise<T>,
+  authorize?: () => void,
+) => Promise<T>;
+
 /** Serializes reconciliation sweeps against dispatches and deduplicates exact requests. */
 export function coordinateWorkerPlacementDispatch(
   service: WorkerPlacementDispatchService,
+  admitDispatch: WorkerPlacementDispatchAdmission,
 ): WorkerPlacementDispatchService & {
   isPlacementOperationInFlight(sessionId: string): boolean;
 } {
@@ -86,8 +93,12 @@ export function coordinateWorkerPlacementDispatch(
       }
     });
   };
-  const runPlacementOperation = async <T>(operation: () => Promise<T>): Promise<T> => {
+  const runPlacementOperation = async <T>(
+    operation: () => Promise<T>,
+    signal?: AbortSignal,
+  ): Promise<T> => {
     for (;;) {
+      signal?.throwIfAborted();
       const pendingFence = placementFence;
       if (!pendingFence) {
         break;
@@ -123,14 +134,6 @@ export function coordinateWorkerPlacementDispatch(
     }
   >();
   const reclaimsInFlight = new Map<string, Set<Promise<unknown>>>();
-  const afterSessionReclaims = async <T>(sessionId: string, run: () => Promise<T>): Promise<T> => {
-    // Later caller mutations cannot replace the worker while Stop prepares. Recovery
-    // bypasses this session intent so it can release the very run Stop is draining.
-    while (reclaimsInFlight.has(sessionId)) {
-      await Promise.allSettled(reclaimsInFlight.get(sessionId)!);
-    }
-    return await run();
-  };
   const joinOperation = async <T>(operation: Promise<T>, authorize?: () => void): Promise<T> => {
     // Shared placement work must never inherit another caller's authority across an await.
     authorize?.();
@@ -151,9 +154,21 @@ export function coordinateWorkerPlacementDispatch(
         }
         return await joinOperation(inFlight.operation, authorize);
       }
-      const operation = afterSessionReclaims(request.sessionId, () =>
-        runPlacementOperation(() => service.dispatch(request, onTransition, authorize)),
-      );
+      // Capture predecessors before admission yields. A later Stop awaits this operation
+      // and must never become a predecessor of the dispatch it is cancelling.
+      const predecessors = [...(reclaimsInFlight.get(request.sessionId) ?? [])];
+      const operation = (async () => {
+        await Promise.allSettled(predecessors);
+        return await admitDispatch(
+          request,
+          (signal) =>
+            runPlacementOperation(
+              () => service.dispatch(request, onTransition, authorize, signal),
+              signal,
+            ),
+          authorize,
+        );
+      })();
       dispatchInFlight.set(request.sessionId, { request, operation });
       try {
         return await operation;
@@ -175,9 +190,19 @@ export function coordinateWorkerPlacementDispatch(
         }
         return await joinOperation(inFlight.operation, authorize);
       }
-      const operation = afterSessionReclaims(request.sessionId, () =>
-        runExclusivePlacementOperation(() => service.move(request, onTransition, authorize)),
-      );
+      const predecessors = [...(reclaimsInFlight.get(request.sessionId) ?? [])];
+      const operation = (async () => {
+        await Promise.allSettled(predecessors);
+        return await admitDispatch(
+          request,
+          (signal) =>
+            runExclusivePlacementOperation(() => {
+              signal?.throwIfAborted();
+              return service.move(request, onTransition, authorize, signal);
+            }),
+          authorize,
+        );
+      })();
       moveInFlight.set(request.sessionId, { request, operation });
       try {
         return await operation;
@@ -189,11 +214,32 @@ export function coordinateWorkerPlacementDispatch(
     },
     reclaim: async (request, authorize, beforeDrain) => {
       // Cancellation may need coordinated recovery. Reserve exclusivity only after it drains.
+      const operations = [
+        dispatchInFlight.get(request.sessionId),
+        moveInFlight.get(request.sessionId),
+      ].filter(
+        (operation): operation is NonNullable<typeof operation> =>
+          operation !== undefined &&
+          operation.request.sessionKey === request.sessionKey &&
+          operation.request.agentId === request.agentId,
+      );
+      const isPendingDispatch = () =>
+        operations.some(
+          (operation) =>
+            dispatchInFlight.get(request.sessionId) === operation ||
+            moveInFlight.get(request.sessionId) === operation,
+        );
       const operation = service.reclaim(
         request,
         authorize,
         beforeDrain,
         runExclusivePlacementOperation,
+        operations.length
+          ? {
+              isCurrent: isPendingDispatch,
+              settled: Promise.allSettled(operations.map((pending) => pending.operation)),
+            }
+          : undefined,
       );
       const pending = reclaimsInFlight.get(request.sessionId) ?? new Set();
       pending.add(operation);

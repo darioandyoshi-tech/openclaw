@@ -21,7 +21,7 @@ import {
 } from "./crabbox-worker-warm-image-store.js";
 
 type CrabboxProfile = ReturnType<typeof parseCrabboxProfile>;
-type LeaseContext = { binary: string; id: string; provider: string };
+type LeaseContext = { binary: string; id: string; provider: string; signal?: AbortSignal };
 type AllocationContext = LeaseContext & {
   profile: ReturnType<typeof resolveCrabboxProvisionProfile>["profile"];
   slug: string;
@@ -181,6 +181,7 @@ export function createCrabboxWarmImageManager(dependencies: {
       args,
       binary: context.binary,
       runCommand: dependencies.runCommand,
+      signal: context.signal,
       timeoutMs,
       ...(input === undefined ? {} : { input }),
     });
@@ -218,6 +219,7 @@ export function createCrabboxWarmImageManager(dependencies: {
         timeoutMs,
       );
     } catch (error) {
+      context.signal?.throwIfAborted();
       // A concurrent retry can resolve this obligation before a late failure.
       // Only provider failures are absorbed; SQLite failures must remain visible.
       if (matches(openStore().lookup(key))) {
@@ -349,6 +351,7 @@ export function createCrabboxWarmImageManager(dependencies: {
   ): Promise<boolean> => {
     try {
       await collectImages(context, "allocation");
+      context.signal?.throwIfAborted();
       const key = crabboxWarmImageKey(profile);
       const record = openStore().lookup(key);
       if (!record?.checkpointId || isRetiringCurrentImage(record)) {
@@ -390,6 +393,7 @@ export function createCrabboxWarmImageManager(dependencies: {
         ),
         "fork",
       );
+      context.signal?.throwIfAborted();
       if (
         fork.checkpointId !== record.checkpointId ||
         fork.leaseId !== context.id ||
@@ -407,6 +411,8 @@ export function createCrabboxWarmImageManager(dependencies: {
       );
       return true;
     } catch (error) {
+      // Stop retires the fixed allocation attempt; it must never launch the cold fallback.
+      context.signal?.throwIfAborted();
       warnOnce("fork", error);
       return false;
     }
@@ -566,6 +572,7 @@ export function createCrabboxWarmImageManager(dependencies: {
     },
 
     async allocate(context: AllocationContext): Promise<void> {
+      context.signal?.throwIfAborted();
       if (context.profile.warmImage && (await forkImage(context, context.profile))) {
         return;
       }
@@ -577,6 +584,7 @@ export function createCrabboxWarmImageManager(dependencies: {
         args: buildCrabboxWarmupArgs(context.profile, context.id, context.slug),
         binary: context.binary,
         runCommand: dependencies.runCommand,
+        signal: context.signal,
         timeoutMs: context.timeoutMs(),
       });
       if (result.termination === "exit" && result.code === 0) {

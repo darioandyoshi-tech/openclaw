@@ -150,12 +150,14 @@ export function createWorkerPlacementDispatchStartup(options: {
     localPath: string;
     onTransition?: (placement: WorkerDispatchPlacement) => void;
     authorize?: WorkerPlacementAuthorization;
+    signal?: AbortSignal;
     recovery?: true;
   }): Promise<WorkerActiveDispatchPlacement> => {
     if (params.placement.state !== "provisioning") {
       throw new Error("Worker dispatch continuation requires a provisioning placement");
     }
     const { request } = params;
+    params.signal?.throwIfAborted();
     const provisioned = requireProvisionedEnvironment(
       params.environment,
       params.expectedEnvironmentId,
@@ -163,6 +165,7 @@ export function createWorkerPlacementDispatchStartup(options: {
       environments,
     );
     const admittedNode = await requireNodePlacementEligibility(request, params.environment);
+    params.signal?.throwIfAborted();
     let placement = placements.transition({
       sessionId: request.sessionId,
       from: "provisioning",
@@ -174,16 +177,19 @@ export function createWorkerPlacementDispatchStartup(options: {
       },
     });
     options.reportTransition(params.onTransition, placement);
+    params.signal?.throwIfAborted();
     const credential = await environments.attachSession({
       environmentId: provisioned.environmentId,
       ownerEpoch: provisioned.ownerEpoch,
       sessionId: request.sessionId,
     });
+    params.signal?.throwIfAborted();
     const ownerEpoch = credential.ownerEpoch;
     const tunnel = await environments.startTunnel({
       environmentId: provisioned.environmentId,
       ownerEpoch,
     });
+    params.signal?.throwIfAborted();
     const gitAuthor = options.resolveGitAuthor?.(request.agentId);
     const synced = await tunnel.syncWorkspace({
       localPath: params.localPath,
@@ -191,6 +197,7 @@ export function createWorkerPlacementDispatchStartup(options: {
       generation: placement.generation,
       ...(gitAuthor ? { gitAuthor } : {}),
     });
+    params.signal?.throwIfAborted();
     placement = placements.transition({
       sessionId: request.sessionId,
       from: "syncing",
@@ -204,6 +211,7 @@ export function createWorkerPlacementDispatchStartup(options: {
     options.reportTransition(params.onTransition, placement);
     const startingPlacement = placement;
     const requireAttachedEnvironment = () => {
+      params.signal?.throwIfAborted();
       const attachedEnvironment = environments.get(provisioned.environmentId);
       if (
         !attachedEnvironment ||

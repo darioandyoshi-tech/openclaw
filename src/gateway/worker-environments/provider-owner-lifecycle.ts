@@ -4,9 +4,12 @@ import type { WorkerEnvironmentRecord } from "./store.js";
 import type { WorkerTunnelStopReason } from "./tunnel-contract.js";
 
 export function createWorkerProviderOwnerLifecycle(
-  options: Pick<WorkerProviderLifecycleOptions, "store" | "tunnelManager" | "serviceError">,
+  options: Pick<
+    WorkerProviderLifecycleOptions,
+    "store" | "tunnelManager" | "serviceError" | "move" | "inState" | "retireNodeEnrollment"
+  >,
 ) {
-  const { store, serviceError } = options;
+  const { store, serviceError, move, inState } = options;
   const tunnels = options.tunnelManager;
 
   const requireCurrentOwner = (record: WorkerEnvironmentRecord): WorkerEnvironmentRecord => {
@@ -43,5 +46,44 @@ export function createWorkerProviderOwnerLifecycle(
     return requireCurrentOwner(record);
   };
 
-  return { requireCurrentOwner, stopOwner };
+  const beginDrain = (record: WorkerEnvironmentRecord) => {
+    const failurePatch =
+      record.teardownTerminalState === "failed" ? { lastError: record.lastError } : undefined;
+    return inState(record, "bootstrapping", "ready", "attached", "idle")
+      ? move(record, "draining", failurePatch)
+      : record;
+  };
+
+  const beginDestroy = (record: WorkerEnvironmentRecord) => {
+    const failurePatch =
+      record.teardownTerminalState === "failed" ? { lastError: record.lastError } : undefined;
+    const draining = beginDrain(record);
+    if (draining.state === "draining") {
+      return move(draining, "destroying", failurePatch);
+    }
+    if (draining.state === "destroying") {
+      return draining;
+    }
+    throw serviceError("invalid_state", `Cannot destroy worker in state: ${record.state}`);
+  };
+
+  const finishProvenDestroy = async (record: WorkerEnvironmentRecord) => {
+    const destroying = beginDestroy(requireCurrentOwner(record));
+    if (destroying.nodeSetupId) {
+      await options.retireNodeEnrollment?.(destroying);
+    }
+    requireCurrentOwner(destroying);
+    if (destroying.teardownTerminalState !== "failed") {
+      return move(destroying, "destroyed");
+    }
+    return move(destroying, "failed", {
+      leaseId: null,
+      nodeDeviceId: null,
+      sshEndpoint: null,
+      sharedHost: false,
+      lastError: destroying.lastError ?? "Worker bootstrap failed after provider teardown",
+    });
+  };
+
+  return { requireCurrentOwner, stopOwner, beginDrain, beginDestroy, finishProvenDestroy };
 }

@@ -51,6 +51,7 @@ export function createWorkerPlacementMoveService(options: {
     request: WorkerPlacementDispatchRequest,
     onTransition?: (placement: WorkerDispatchPlacement) => void,
     authorize?: WorkerPlacementAuthorization,
+    signal?: AbortSignal,
   ) => Promise<WorkerActiveDispatchPlacement>;
   reclaimSource: (
     request: WorkerPlacementReclaimRequest,
@@ -92,6 +93,7 @@ export function createWorkerPlacementMoveService(options: {
     destination: NonNullable<WorkerPlacementMoveDestination>;
     onTransition?: (placement: WorkerDispatchPlacement) => void;
     authorize?: WorkerPlacementAuthorization;
+    signal?: AbortSignal;
   }): Promise<WorkerActiveDispatchPlacement> => {
     const active = await options.dispatch(
       {
@@ -101,6 +103,7 @@ export function createWorkerPlacementMoveService(options: {
       },
       params.onTransition,
       params.authorize,
+      params.signal,
     );
     const completed = options.placements.completePlacementMoveToWorker({
       operationId: params.intent.operationId,
@@ -119,9 +122,17 @@ export function createWorkerPlacementMoveService(options: {
     request: WorkerPlacementMoveRequest,
     onTransition?: (placement: WorkerDispatchPlacement) => void,
     authorize?: WorkerPlacementAuthorization,
+    signal?: AbortSignal,
   ): Promise<WorkerMovePlacement> => {
+    const assertCurrent = signal
+      ? () => {
+          signal.throwIfAborted();
+          authorize?.();
+        }
+      : authorize;
     let intent: WorkerPlacementMoveIntent | undefined;
     try {
+      signal?.throwIfAborted();
       if (request.abandonSource && request.target.kind !== "gateway") {
         throw new Error("Source abandonment is available only when continuing on the Gateway");
       }
@@ -137,7 +148,7 @@ export function createWorkerPlacementMoveService(options: {
         sessionKey: request.sessionKey,
         agentId: request.agentId,
         sourceDisposition: request.abandonSource ? "abandon" : "reconcile",
-        authorize,
+        authorize: assertCurrent,
         begin: async (prepareNew) => {
           const moveRequest = {
             sessionId: request.sessionId,
@@ -173,8 +184,8 @@ export function createWorkerPlacementMoveService(options: {
       intent = begun.intent;
       reportTransition(onTransition, begun.placement);
       const local = request.abandonSource
-        ? await options.abandonSource(request, intent, authorize)
-        : await options.reclaimSource(request, intent, authorize);
+        ? await options.abandonSource(request, intent, assertCurrent)
+        : await options.reclaimSource(request, intent, assertCurrent);
       reportTransition(onTransition, local);
       if (local.state !== "local") {
         throw new Error(`Session ${request.sessionKey} move did not return to local placement`);
@@ -190,7 +201,8 @@ export function createWorkerPlacementMoveService(options: {
         intent,
         destination,
         ...(onTransition ? { onTransition } : {}),
-        ...(authorize ? { authorize } : {}),
+        authorize: assertCurrent,
+        signal,
       });
     } catch (error) {
       const durableIntent = intent ?? options.placements.getPlacementMove(request.sessionId);

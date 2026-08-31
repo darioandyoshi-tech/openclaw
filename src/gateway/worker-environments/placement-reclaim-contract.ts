@@ -18,6 +18,7 @@ export type WorkerPlacementReclaimBarriers = {
     params: WorkerPlacementReclaimRequest & {
       authorize?: WorkerPlacementAuthorization;
       beforeDrain?: WorkerPlacementAuthorization;
+      pendingDispatch?: { isCurrent: () => boolean; settled: Promise<unknown> };
       run: (authorize?: WorkerPlacementAuthorization) => Promise<WorkerReclaimPlacement>;
     },
   ) => Promise<WorkerReclaimPlacement>;
