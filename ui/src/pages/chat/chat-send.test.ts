@@ -8954,6 +8954,7 @@ describe("handleSendChat", () => {
               ],
               total: 1,
             },
+            inputReceipts: [{ runId: "accepted-source", state: "pending" }],
           };
         },
       },
@@ -9041,10 +9042,16 @@ describe("handleSendChat", () => {
             sessionId: recovery === "replacement session" ? "replacement" : source.sessionId,
             messages: [aggregate],
             pendingInputs: { items: [], total: 0 },
-            inputConsumptions:
+            inputReceipts:
               recovery === "ok replay" && !replayed
                 ? []
-                : [{ runId: source.sendRunId, consumedByEventId: "aggregate" }],
+                : [
+                    {
+                      runId: source.sendRunId,
+                      state: "consumed",
+                      consumedByEventId: "aggregate",
+                    },
+                  ],
             sessionInfo: row(source.sessionKey, {
               sessionId: recovery === "replacement session" ? "replacement" : source.sessionId,
               hasActiveRun: false,

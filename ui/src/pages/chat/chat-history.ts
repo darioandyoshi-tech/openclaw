@@ -1,6 +1,6 @@
 import { readSessionMessageSequence } from "@openclaw/gateway-client/browser";
 import type {
-  ChatInputConsumptions,
+  ChatInputReceipts,
   ChatPendingInputsPage,
 } from "../../../../packages/gateway-protocol/src/schema/logs-chat.js";
 import { GatewayRequestError, type GatewayBrowserClient } from "../../api/gateway.ts";
@@ -300,7 +300,7 @@ type ChatSessionMessageSubscriptionState = ChatState & {
 
 export type ChatHistoryResult = {
   pendingInputs?: ChatPendingInputsPage;
-  inputConsumptions?: ChatInputConsumptions;
+  inputReceipts?: ChatInputReceipts;
   sourceCanonicalListRevision?: number;
   deltaCursor?: string;
   messages?: Array<unknown>;
@@ -335,7 +335,7 @@ export type ChatHistoryResult = {
 
 type ChatHistoryDeltaResult = {
   pendingInputs?: ChatPendingInputsPage;
-  inputConsumptions?: ChatInputConsumptions;
+  inputReceipts?: ChatInputReceipts;
   kind: "delta";
   messages: unknown[];
   deltaCursor: string;
@@ -1970,9 +1970,9 @@ async function loadChatHistoryUncached(
         scope: { ...historyProjection.scope, ...readChatSessionProjectionScope(state) },
       });
       applyChatPendingInputs(state, response.pendingInputs, {
-        consumptions:
+        receipts:
           !previousSessionId || previousSessionId === state.currentSessionId
-            ? response.inputConsumptions
+            ? response.inputReceipts
             : undefined,
       });
       state.chatThinkingLevel = response.sessionInfo.thinkingLevel ?? null;
@@ -2001,7 +2001,7 @@ async function loadChatHistoryUncached(
         messages: state.chatMessages,
         deltaCursor: response.deltaCursor,
         pendingInputs: response.pendingInputs,
-        inputConsumptions: response.inputConsumptions,
+        inputReceipts: response.inputReceipts,
         sessionInfo: response.sessionInfo,
         ...(response.inFlightRun ? { inFlightRun: response.inFlightRun } : {}),
         ...(response.metadata ? { metadata: response.metadata } : {}),
@@ -2076,10 +2076,8 @@ async function loadChatHistoryUncached(
     state.chatHistoryPagination = reconciledHistory?.pagination ?? nextPagination;
     state.currentSessionId = nextSessionId;
     applyChatPendingInputs(state, res.pendingInputs, {
-      consumptions:
-        !previousSessionId || previousSessionId === nextSessionId
-          ? res.inputConsumptions
-          : undefined,
+      receipts:
+        !previousSessionId || previousSessionId === nextSessionId ? res.inputReceipts : undefined,
     });
     commitCurrentChatHistorySnapshot(state, res.deltaCursor ?? null);
     if (

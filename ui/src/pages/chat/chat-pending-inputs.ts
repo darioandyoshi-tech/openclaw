@@ -1,10 +1,10 @@
 import { readSessionMessageIdentity } from "@openclaw/gateway-client/browser";
 import {
-  CHAT_INPUT_CONSUMPTION_MAX_RUN_IDS,
+  CHAT_INPUT_RECEIPT_MAX_RUN_IDS,
   CHAT_INPUT_RUN_ID_MAX_CHARS,
 } from "../../../../packages/gateway-protocol/src/schema/chat-history-constants.js";
 import type {
-  ChatInputConsumptions,
+  ChatInputReceipts,
   ChatPendingInputsPage,
 } from "../../../../packages/gateway-protocol/src/schema/logs-chat.js";
 import { t } from "../../i18n/index.ts";
@@ -108,13 +108,13 @@ export function readChatInputRunIds(state: ChatState): string[] {
     ),
   ]
     .toSorted()
-    .slice(0, CHAT_INPUT_CONSUMPTION_MAX_RUN_IDS);
+    .slice(0, CHAT_INPUT_RECEIPT_MAX_RUN_IDS);
 }
 
 export function applyChatPendingInputs(
   state: ChatState,
   page: ChatPendingInputsPage | undefined,
-  options: { before?: number; consumptions?: ChatInputConsumptions } = {},
+  options: { before?: number; receipts?: ChatInputReceipts } = {},
 ): void {
   pendingInputViews.set(state, {
     sessionKey: state.sessionKey,
@@ -125,7 +125,7 @@ export function applyChatPendingInputs(
     loading: false,
   });
   const acceptedRunIds = new Set(
-    [...(page?.items ?? []), ...(options.consumptions ?? [])].map((item) => item.runId),
+    [...(page?.items ?? []), ...(options.receipts ?? [])].map((item) => item.runId),
   );
   if (acceptedRunIds.size) {
     // The server owns accepted input even after an interruption. Retiring the
