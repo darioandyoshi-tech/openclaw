@@ -466,6 +466,14 @@ describe("usage-format", () => {
       cacheRead: 3,
       cacheWrite: 4,
     });
+    expect(
+      resolveModelCostConfig({
+        provider: "anthropic",
+        model: "missing-model",
+        config,
+        allowPluginNormalization: false,
+      }),
+    ).toBeUndefined();
     expect(manifestSpy).not.toHaveBeenCalled();
   });
 
