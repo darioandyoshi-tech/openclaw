@@ -3,7 +3,11 @@ import type { GatewayBrowserClient } from "../../api/gateway.ts";
 import { chatQueueOrderKey, isMovableChatQueueItem } from "../../lib/chat/chat-queue-order.ts";
 import type { ChatAttachment, ChatQueueItem } from "../../lib/chat/chat-types.ts";
 import { sameQueuedDeliveryVersion } from "../../lib/chat/outbox-store-codec.ts";
-import { storageTargetForGateway } from "../../lib/chat/outbox-store.ts";
+import {
+  storageTargetForGateway,
+  resolveStoredChatOutboxScope,
+  storedChatOutboxScopeKey,
+} from "../../lib/chat/outbox-store.ts";
 import {
   getChatAttachmentDataUrl,
   releaseChatAttachmentPayloads,
@@ -15,7 +19,6 @@ import {
   removeVisibleOrScopedQueuedMessageWithoutReleasing,
   type ChatQueueScopedSessionHost,
 } from "./chat-queue.ts";
-import { resolveStoredChatOutboxScope, storedChatOutboxScopeKey } from "./composer-persistence.ts";
 
 /**
  * The edited row stays in the queue, holding its own place, so the operator can

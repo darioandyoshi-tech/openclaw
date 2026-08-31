@@ -5,6 +5,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GatewayBrowserClient } from "../../api/gateway.ts";
 import type { ApplicationContext } from "../../app/context.ts";
 import type { BrowserAnnotationDraft } from "../../components/browser/browser-annotation.ts";
+import {
+  resolveStoredChatOutboxScope,
+  storedChatOutboxScopeKey,
+} from "../../lib/chat/outbox-store.ts";
 import type { SessionCapability } from "../../lib/sessions/index.ts";
 import {
   cloneChatAttachmentsForIndependentOwner,
@@ -17,7 +21,6 @@ import {
   createTestChatPane,
   type TestChatPane,
 } from "./chat-pane.test-support.ts";
-import { resolveStoredChatOutboxScope, storedChatOutboxScopeKey } from "./composer-persistence.ts";
 
 afterEach(() => {
   vi.restoreAllMocks();

@@ -7,8 +7,10 @@ import {
   reorderChatQueueItems,
 } from "../../lib/chat/chat-queue-order.ts";
 import type { ChatAttachment, ChatQueueItem } from "../../lib/chat/chat-types.ts";
+import { storedChatOutboxScopeKey } from "../../lib/chat/outbox-store.ts";
 import { generateUUID } from "../../lib/uuid.ts";
-import { loadChatBranches, loadChatHistory, type ChatState } from "./chat-history.ts";
+import { loadChatBranches } from "./chat-history-branches.ts";
+import { loadChatHistory } from "./chat-history.ts";
 import {
   flushStoredChatOutbox,
   resumeStoredChatOutboxes as resumeStoredChatOutboxesDrain,
@@ -37,7 +39,7 @@ import {
   resolveDisplayedLeafEntryId,
 } from "./chat-send-request.ts";
 import { OFFLINE_QUEUE_STORAGE_ERROR } from "./chat-send-support.ts";
-import { storedChatOutboxScopeKey } from "./composer-persistence.ts";
+import type { ChatState } from "./chat-state-contract.ts";
 import { formatConnectError } from "./connect-error.ts";
 import {
   activeQueuedMessageEdit,

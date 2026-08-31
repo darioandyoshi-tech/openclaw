@@ -5,20 +5,19 @@ import {
   readChatOutboxRecovery,
   restoreChatOutboxRecovery,
 } from "../../lib/chat/outbox-recovery.ts";
+import { listStoredChatOutboxes } from "../../lib/chat/outbox-store-projection.ts";
 import {
   storageTargetForGateway,
   subscribeStoredChatOutboxChanges,
+  resolveStoredChatOutboxScope,
 } from "../../lib/chat/outbox-store.ts";
 import { createStorageMock } from "../../test-helpers/storage.ts";
 import {
   admitStoredChatComposerQueueItem,
-  listStoredChatOutboxes,
-  loadChatComposerSnapshot,
-  persistChatComposerState,
-  resolveStoredChatOutboxScope,
   updateStoredChatComposerQueueItem,
   removeStoredChatComposerQueueItem,
-} from "./composer-persistence.ts";
+} from "./composer-queue-store.ts";
+import { loadChatComposerSnapshot, persistChatComposerState } from "./composer-session-store.ts";
 
 const gatewayUrl = "ws://outbox.test";
 const state = {

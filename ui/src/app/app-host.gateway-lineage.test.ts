@@ -8,6 +8,7 @@ import type {
   GatewayHelloOk,
 } from "../api/gateway.ts";
 import type { AgentsListResult } from "../api/types.ts";
+import { listStoredChatOutboxes } from "../lib/chat/outbox-store-projection.ts";
 import { createSessionCapability } from "../lib/sessions/index.ts";
 import { sessionsResult } from "../lib/sessions/session-capability.test-support.ts";
 import {
@@ -21,7 +22,6 @@ import {
 } from "../pages/chat/chat-queue.ts";
 import { handleSendChat } from "../pages/chat/chat-send-submit.ts";
 import { renderChatComposer } from "../pages/chat/components/chat-composer.ts";
-import { listStoredChatOutboxes } from "../pages/chat/composer-persistence.ts";
 import {
   activeQueuedMessageEdit,
   beginQueuedMessageEdit,

@@ -5,6 +5,10 @@ import type { GatewayBrowserClient } from "../../api/gateway.ts";
 import { createChatAttachmentHandoff } from "../../app/chat-attachment-handoff.ts";
 import type { ApplicationContext } from "../../app/context.ts";
 import type { ChatAttachment } from "../../lib/chat/chat-types.ts";
+import {
+  resolveStoredChatOutboxScope,
+  storedChatOutboxScopeKey,
+} from "../../lib/chat/outbox-store.ts";
 import type { SessionCapability } from "../../lib/sessions/index.ts";
 import {
   getChatAttachmentDataUrl,
@@ -20,7 +24,6 @@ import {
 } from "./chat-pane-attachment-handoff.ts";
 import { createTestChatPane } from "./chat-pane.test-support.ts";
 import type { ChatPageHost } from "./chat-state-host.ts";
-import { resolveStoredChatOutboxScope, storedChatOutboxScopeKey } from "./composer-persistence.ts";
 import type { ChatSplitLayout } from "./split-layout-types.ts";
 
 function storedAttachment(id: string, mimeType = "image/png"): ChatAttachment {

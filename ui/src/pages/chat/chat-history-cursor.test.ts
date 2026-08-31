@@ -8,7 +8,7 @@ import { loadChatHistory } from "./chat-history.ts";
 import { makeChatHost } from "./chat-host.test-support.ts";
 import { retireDeliveredQueuedUserTurn } from "./chat-send-support.ts";
 import { buildChatItems } from "./chat-thread-build.ts";
-import { admitStoredChatComposerQueueItem } from "./composer-persistence.ts";
+import { admitStoredChatComposerQueueItem } from "./composer-queue-store.ts";
 import {
   getChatSessionProjection,
   readChatSessionProjectionScope,

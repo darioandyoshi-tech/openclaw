@@ -3,7 +3,7 @@ import { loadSettings } from "../../app/settings.ts";
 import type { ChatAttachment } from "../../lib/chat/chat-types.ts";
 import { normalizeAgentId } from "../../lib/sessions/session-key.ts";
 import { generateUUID } from "../../lib/uuid.ts";
-import { admitStoredChatComposerQueueItem } from "../chat/composer-persistence.ts";
+import { admitStoredChatComposerQueueItem } from "../chat/composer-queue-store.ts";
 import { prepareInitialTurnHandoff } from "../chat/initial-turn-handoff.ts";
 
 /** Returns true when attachment payload ownership moved to the volatile handoff. */

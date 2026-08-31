@@ -5,9 +5,11 @@ import type { ChatPendingInputsPage } from "../../../../packages/gateway-protoco
 import { createDeferred } from "../../../../test/helpers/promise.js";
 import type { ChatQueueItem } from "../../lib/chat/chat-types.ts";
 import * as outboxPayloadStore from "../../lib/chat/outbox-payload-store.runtime.ts";
+import { listStoredChatOutboxes } from "../../lib/chat/outbox-store-projection.ts";
 import { storageTargetForGateway } from "../../lib/chat/outbox-store.ts";
 import { createStorageMock } from "../../test-helpers/storage.ts";
-import { getChatHistoryLoadState, loadChatHistory } from "./chat-history.ts";
+import { getChatHistoryLoadState } from "./chat-history-state.ts";
+import { loadChatHistory } from "./chat-history.ts";
 import { makeChatHost } from "./chat-host.test-support.ts";
 import { createInitializationContext } from "./chat-pane.test-support.ts";
 import {
@@ -22,7 +24,7 @@ import type { ChatPageHost } from "./chat-state-host.ts";
 import { createPageState } from "./chat-state-page.ts";
 import { buildChatItems } from "./chat-thread-build.ts";
 import { resetChatThreadState } from "./chat-thread.ts";
-import { listStoredChatOutboxes, loadChatComposerSnapshot } from "./composer-persistence.ts";
+import { loadChatComposerSnapshot } from "./composer-session-store.ts";
 import { getChatSessionProjection } from "./history-merge.ts";
 import { installOutboxBrowserStorage } from "./outbox-browser.test-support.ts";
 import { prepareOutboxPayload } from "./outbox-payloads.ts";

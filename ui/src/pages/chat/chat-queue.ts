@@ -1,7 +1,17 @@
 // Control UI page module owns Chat queue storage and queue item cleanup.
 import { compareChatQueueOrder, isMovableChatQueueItem } from "../../lib/chat/chat-queue-order.ts";
 import type { ChatAttachment, ChatQueueItem } from "../../lib/chat/chat-types.ts";
-import { captureChatOutboxAdmission } from "../../lib/chat/outbox-store.ts";
+import {
+  listStoredChatOutboxes,
+  type StoredChatOutbox,
+} from "../../lib/chat/outbox-store-projection.ts";
+import {
+  captureChatOutboxAdmission,
+  resolveStoredChatOutboxScope,
+  storedChatOutboxScopeKey,
+  type ChatComposerScope,
+  type StoredChatOutboxScope,
+} from "../../lib/chat/outbox-store.ts";
 import type { SenderIdentity } from "../../lib/chat/sender-label.ts";
 import { scopedAgentIdForSession, type SessionScopeHost } from "../../lib/sessions/index.ts";
 import { generateUUID } from "../../lib/uuid.ts";
@@ -9,17 +19,11 @@ import { releaseChatAttachmentPayloads } from "./attachment-payload-store.ts";
 import { chatOutboxOwner } from "./chat-outbox-owner.ts";
 import {
   admitStoredChatComposerQueueItem,
-  listStoredChatOutboxes,
   removeStoredChatComposerQueueItem,
-  resolveStoredChatOutboxScope,
-  storedChatOutboxScopeKey,
   updateStoredChatComposerQueueItem,
   updateStoredChatComposerQueueItems,
   type StoredChatQueueReplacement,
-  type ChatComposerScope,
-  type StoredChatOutbox,
-  type StoredChatOutboxScope,
-} from "./composer-persistence.ts";
+} from "./composer-queue-store.ts";
 
 type ChatQueueStoreHost = {
   chatQueue: ChatQueueItem[];

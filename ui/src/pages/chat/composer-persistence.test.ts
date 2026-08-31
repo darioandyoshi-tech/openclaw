@@ -2,20 +2,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChatGoalDraftMode, ChatQueueItem } from "../../lib/chat/chat-types.ts";
 import { readChatOutboxRecovery } from "../../lib/chat/outbox-recovery.ts";
-import { subscribeStoredChatOutboxChanges } from "../../lib/chat/outbox-store.ts";
+import { listStoredChatOutboxes } from "../../lib/chat/outbox-store-projection.ts";
+import {
+  subscribeStoredChatOutboxChanges,
+  resolveStoredChatOutboxScope,
+} from "../../lib/chat/outbox-store.ts";
 import { createStorageMock } from "../../test-helpers/storage.ts";
+import { ChatComposerPersistence } from "./composer-persistence.ts";
 import {
   admitStoredChatComposerQueueItem,
-  ChatComposerPersistence,
-  listStoredChatOutboxes,
+  removeStoredChatComposerQueueItem,
+  updateStoredChatComposerQueueItem,
+} from "./composer-queue-store.ts";
+import {
   loadChatComposerDraftRevision,
   loadChatComposerSnapshot,
   persistChatComposerState,
-  removeStoredChatComposerQueueItem,
-  resolveStoredChatOutboxScope,
   restoreChatComposerState,
-  updateStoredChatComposerQueueItem,
-} from "./composer-persistence.ts";
+} from "./composer-session-store.ts";
 
 type ComposerState = Parameters<typeof persistChatComposerState>[0] & {
   selectedChatSessionIncognito: boolean;

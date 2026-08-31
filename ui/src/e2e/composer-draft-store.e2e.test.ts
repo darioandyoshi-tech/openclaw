@@ -74,8 +74,11 @@ suite.define(() => {
       const composerHandle = await page.evaluateHandle<
         typeof import("../pages/chat/composer-persistence.ts")
       >('import("/src/pages/chat/composer-persistence.ts")');
+      const outboxHandle = await page.evaluateHandle<typeof import("../lib/chat/outbox-store.ts")>(
+        'import("/src/lib/chat/outbox-store.ts")',
+      );
       const result = await page.evaluate(
-        async ({ draftStore, composer }) => {
+        async ({ draftStore, composer, outbox }) => {
           const client = { recoveryScope: "credential-a", recoveryScopeReady: true };
           const state = {
             settings: { gatewayUrl: "owner-fence-gateway" },
@@ -90,8 +93,8 @@ suite.define(() => {
           const scope = {
             gatewayOwner: state.settings.gatewayUrl,
             recoveryScope: client.recoveryScope,
-            scopeKey: `chat:v3:${composer.storedChatOutboxScopeKey(
-              composer.resolveStoredChatOutboxScope(state, state.sessionKey),
+            scopeKey: `chat:v3:${outbox.storedChatOutboxScopeKey(
+              outbox.resolveStoredChatOutboxScope(state, state.sessionKey),
             )}`,
           };
           const persistence = new composer.ChatComposerPersistence(() => state);
@@ -128,7 +131,7 @@ suite.define(() => {
           );
           return draftStore.readDurableComposerDraft(scope);
         },
-        { draftStore: storeHandle, composer: composerHandle },
+        { draftStore: storeHandle, composer: composerHandle, outbox: outboxHandle },
       );
 
       expect(result).toMatchObject({
@@ -435,11 +438,14 @@ suite.define(() => {
       const composerHandle = await page.evaluateHandle<
         typeof import("../pages/chat/composer-persistence.ts")
       >('import("/src/pages/chat/composer-persistence.ts")');
+      const outboxHandle = await page.evaluateHandle<typeof import("../lib/chat/outbox-store.ts")>(
+        'import("/src/lib/chat/outbox-store.ts")',
+      );
       const durableHandle = await page.evaluateHandle<
         typeof import("../pages/chat/durable-composer-persistence.ts")
       >('import("/src/pages/chat/durable-composer-persistence.ts")');
       const result = await page.evaluate(
-        async ({ draftStore, composer, durable }) => {
+        async ({ draftStore, composer, durable, outbox }) => {
           const waitFor = async (predicate: () => Promise<boolean>) => {
             for (let attempt = 0; attempt < 100; attempt += 1) {
               if (await predicate()) {
@@ -464,11 +470,11 @@ suite.define(() => {
             connected: true,
             selectedChatSessionIncognito: false,
           };
-          const storedScope = composer.resolveStoredChatOutboxScope(state, state.sessionKey);
+          const storedScope = outbox.resolveStoredChatOutboxScope(state, state.sessionKey);
           const scope = {
             gatewayOwner: state.settings.gatewayUrl,
             recoveryScope: state.client.recoveryScope,
-            scopeKey: `chat:v3:${composer.storedChatOutboxScopeKey(storedScope)}`,
+            scopeKey: `chat:v3:${outbox.storedChatOutboxScopeKey(storedScope)}`,
           };
           const persistence = new composer.ChatComposerPersistence(() => state);
           persistence.start();
@@ -513,7 +519,12 @@ suite.define(() => {
             attachments: restartedState.chatAttachments.length,
           };
         },
-        { draftStore: storeHandle, composer: composerHandle, durable: durableHandle },
+        {
+          draftStore: storeHandle,
+          composer: composerHandle,
+          durable: durableHandle,
+          outbox: outboxHandle,
+        },
       );
 
       expect(result).toEqual({ message: "", attachments: 0 });

@@ -1,11 +1,14 @@
 import type { ApplicationContext } from "../../app/context.ts";
 import type { ChatAttachment } from "../../lib/chat/chat-types.ts";
 import {
+  resolveStoredChatOutboxScope,
+  storedChatOutboxScopeKey,
+} from "../../lib/chat/outbox-store.ts";
+import {
   releaseChatAttachmentPayloads,
   releaseDisplacedChatAttachmentPayloads,
 } from "./attachment-payload-store.ts";
 import type { ChatPageHost } from "./chat-state-host.ts";
-import { resolveStoredChatOutboxScope, storedChatOutboxScopeKey } from "./composer-persistence.ts";
 import type { ChatSplitLayout } from "./split-layout-types.ts";
 import { panesOf, visiblePanesOf } from "./split-layout.ts";
 

@@ -434,7 +434,6 @@ const config = {
     // Focused Control UI tests consume these explicit state-machine seams;
     // production uses them through their owning module/controller.
     "ui/src/pages/chat/chat-state-refresh.ts": ["exports"],
-    "ui/src/pages/chat/composer-persistence.ts": ["exports"],
     // Focused media tests consume these explicit seams; production uses the helpers in-module.
     "src/agents/embedded-agent-subscribe.handlers.lifecycle.ts": ["exports"],
     "src/gateway/server-methods/chat-webchat-media.ts": ["exports"],

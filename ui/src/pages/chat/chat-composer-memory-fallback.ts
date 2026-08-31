@@ -1,16 +1,21 @@
-import type { ChatAttachment, ChatGoalDraftMode } from "../../lib/chat/chat-types.ts";
-import { parseStoredChatOutboxScope } from "../../lib/chat/outbox-store.ts";
+import type {
+  ChatAttachment,
+  ChatGoalDraftMode,
+  ChatComposerDraftRetry,
+} from "../../lib/chat/chat-types.ts";
+import {
+  parseStoredChatOutboxScope,
+  resolveStoredChatOutboxScope,
+  storedChatOutboxScopeKey,
+  type StoredChatOutboxScope,
+} from "../../lib/chat/outbox-store.ts";
 import { hasUiSessionDefaults } from "../../lib/sessions/session-key.ts";
 import { releaseDisplacedChatAttachmentPayloads } from "./attachment-payload-store.ts";
 import type { ChatComposerMemoryFallback, ChatPageHost } from "./chat-state-host.ts";
 import {
   loadChatComposerCommittedDraftRevision,
   loadChatComposerDraftRevision,
-  resolveStoredChatOutboxScope,
-  storedChatOutboxScopeKey,
-  type ChatComposerDraftRetry,
-  type StoredChatOutboxScope,
-} from "./composer-persistence.ts";
+} from "./composer-session-store.ts";
 
 let lastChatComposerMemoryFallbackSequence = 0;
 

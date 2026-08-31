@@ -4,17 +4,17 @@ import {
   outboxPayloadMatchesOwner,
   observeOutboxRecoveryOwner,
 } from "../../lib/chat/outbox-payload-store.runtime.ts";
-import { subscribeStoredChatOutboxChanges } from "../../lib/chat/outbox-store.ts";
-import { getSafeSessionStorage } from "../../local-storage.ts";
-import { getChatAttachmentDataUrl } from "./attachment-payload-store.ts";
+import { listStoredChatOutboxes } from "../../lib/chat/outbox-store-projection.ts";
 import {
-  listStoredChatOutboxes,
-  updateStoredChatComposerQueueItem,
+  subscribeStoredChatOutboxChanges,
   resolveStoredChatOutboxScope,
   storedChatOutboxScopeKey,
   type ChatComposerScope as Composer,
   type StoredChatOutboxScope as Scope,
-} from "./composer-persistence.ts";
+} from "../../lib/chat/outbox-store.ts";
+import { getSafeSessionStorage } from "../../local-storage.ts";
+import { getChatAttachmentDataUrl } from "./attachment-payload-store.ts";
+import { updateStoredChatComposerQueueItem } from "./composer-queue-store.ts";
 import {
   captureOutboxPayloadOwner,
   failOutboxPayload,

@@ -1,15 +1,15 @@
 /* @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChatQueueItem } from "../../lib/chat/chat-types.ts";
+import { listStoredChatOutboxes } from "../../lib/chat/outbox-store-projection.ts";
 import { createStorageMock } from "../../test-helpers/storage.ts";
 import { makeChatHost } from "./chat-host.test-support.ts";
 import { admitQueuedMessageForSession, subscribeChatOutboxProjection } from "./chat-queue.ts";
 import { moveQueuedChatMessage } from "./chat-send-actions.ts";
 import {
-  listStoredChatOutboxes,
   updateStoredChatComposerQueueItem,
   updateStoredChatComposerQueueItems,
-} from "./composer-persistence.ts";
+} from "./composer-queue-store.ts";
 
 const SESSION_KEY = "agent:main";
 

@@ -7,6 +7,7 @@ import { parseSlashCommand } from "../../lib/chat/commands.ts";
 import { extractCompanionCommandQuestion } from "../../lib/chat/companion-question.ts";
 import { resolveCurrentUserIdentity } from "../../lib/chat/current-user-identity.ts";
 import type { ControlUiFollowUpMode } from "../../lib/chat/follow-up-mode.ts";
+import { resolveStoredChatOutboxScope } from "../../lib/chat/outbox-store.ts";
 import { scopedAgentIdForSession, visibleSessionMatches } from "../../lib/sessions/index.ts";
 import {
   getChatAttachmentDataUrl,
@@ -57,7 +58,6 @@ import {
 import { recordChatSendTiming } from "./chat-send-timing.ts";
 import { getPendingChatPickerPatch } from "./chat-session.ts";
 import { withChatSubmitGuard } from "./chat-submit-guard.ts";
-import { resolveStoredChatOutboxScope } from "./composer-persistence.ts";
 import {
   recordNonTranscriptInputHistory,
   resetChatInputHistoryNavigation,
