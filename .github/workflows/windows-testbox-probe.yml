@@ -17,6 +17,7 @@ on:
           - blacksmith-16vcpu-windows-2025
           - blacksmith-32vcpu-windows-2025
           - windows-2025
+          - windows-2022
       keepalive_minutes:
         description: "Minutes to keep the Windows runner alive for SSH inspection"
         required: false
@@ -71,7 +72,9 @@ jobs:
         with:
           ref: ${{ github.workflow_sha }}
           path: .proof-harness
-          sparse-checkout: .github/proof/windows-cron-durable-fence.e2e.test.ts
+          sparse-checkout: |
+            .github/proof/windows-cron-durable-fence.e2e.test.ts
+            .github/proof/windows-gateway-identity-deadline.e2e.test.ts
           sparse-checkout-cone-mode: false
           persist-credentials: false
           submodules: false
@@ -280,6 +283,16 @@ jobs:
           pnpm -v
           pnpm install --frozen-lockfile --prefer-offline --config.ignore-scripts=false --config.engine-strict=false --config.enable-pre-post-scripts=true --config.side-effects-cache=true || pnpm install --frozen-lockfile --prefer-offline --config.ignore-scripts=false --config.engine-strict=false --config.enable-pre-post-scripts=true --config.side-effects-cache=true
 
+      - name: Verify the Windows WMIC fallback surface
+        if: ${{ inputs.run_windows_ci && inputs.runner_label == 'windows-2022' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $wmic = Join-Path $env:SystemRoot "System32\wbem\wmic.exe"
+          if (-not (Test-Path -LiteralPath $wmic)) {
+            throw "This runner does not expose the WMIC fallback at $wmic"
+          }
+
       - name: Run Windows cron durable-fence proof
         id: cron_identity
         if: ${{ inputs.run_windows_ci }}
@@ -298,9 +311,15 @@ jobs:
           Copy-Item `
             -LiteralPath ".proof-harness/.github/proof/windows-cron-durable-fence.e2e.test.ts" `
             -Destination "test/e2e/windows-cron-durable-fence.e2e.test.ts"
-          node scripts/run-vitest.mjs run `
-            --config test/vitest/vitest.e2e.config.ts `
-            test/e2e/windows-cron-durable-fence.e2e.test.ts
+          $tests = @("test/e2e/windows-cron-durable-fence.e2e.test.ts")
+          $wmic = Join-Path $env:SystemRoot "System32\wbem\wmic.exe"
+          if (Test-Path -LiteralPath $wmic) {
+            Copy-Item `
+              -LiteralPath ".proof-harness/.github/proof/windows-gateway-identity-deadline.e2e.test.ts" `
+              -Destination "test/e2e/windows-gateway-identity-deadline.e2e.test.ts"
+            $tests += "test/e2e/windows-gateway-identity-deadline.e2e.test.ts"
+          }
+          node scripts/run-vitest.mjs run --config test/vitest/vitest.e2e.config.ts @tests
 
       - name: Upload Windows cron durable-fence proof
         id: cron_identity_upload
@@ -318,6 +337,7 @@ jobs:
         shell: pwsh
         run: |
           Remove-Item -LiteralPath "test/e2e/windows-cron-durable-fence.e2e.test.ts" -Force -ErrorAction SilentlyContinue
+          Remove-Item -LiteralPath "test/e2e/windows-gateway-identity-deadline.e2e.test.ts" -Force -ErrorAction SilentlyContinue
           Remove-Item -LiteralPath ".proof-harness" -Recurse -Force -ErrorAction SilentlyContinue
 
       - name: Enforce Windows cron durable-fence proof
