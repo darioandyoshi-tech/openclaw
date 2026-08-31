@@ -4,6 +4,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import type { ContextEngine } from "../context-engine/types.js";
 import { createTestAdmittedRunContext } from "./admitted-run-context.test-support.js";
 import type { PreparedCliRunContext } from "./cli-runner/types.js";
+import { waitForDeferredTurnMaintenanceForSession } from "./embedded-agent-runner/context-engine-maintenance.js";
 
 const {
   executePreparedCliRunMock,
@@ -306,9 +307,7 @@ describe("runPreparedCliAgent context engine lifecycle", () => {
       lastCallUsage: { input: 11, output: 7, total: 18 },
       diagnosticUsage: { input: 21, output: 9, total: 30 },
     });
-    expect(loadCliSessionContextEngineMessagesMock).toHaveBeenCalledWith({
-      sessionTarget: CONTEXT_ENGINE_SESSION_TARGET,
-    });
+    expect(loadCliSessionContextEngineMessagesMock).toHaveBeenCalledWith(context.params);
     expect(loadCliSessionHistoryMessagesMock).not.toHaveBeenCalled();
     expect(bootstrap).toHaveBeenCalledTimes(1);
     const bootstrapParams = bootstrap.mock.calls[0]?.[0];
@@ -621,8 +620,8 @@ describe("runPreparedCliAgent context engine lifecycle", () => {
     await runPreparedCliAgent(context);
 
     expect(dispose).not.toHaveBeenCalled();
-    expect(context.contextEngineDeferredTurnMaintenance).toBeDefined();
-    await context.contextEngineDeferredTurnMaintenance;
+    await waitForDeferredTurnMaintenanceForSession(context.params.sessionKey);
+    expect(maintain).toHaveBeenCalledTimes(2);
     expect(dispose).not.toHaveBeenCalled();
   });
 
